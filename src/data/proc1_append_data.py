@@ -1,7 +1,5 @@
 """
 
-Filter out bad days
-Calculate and append CHAOS core field (n=1-15) and crust (16-110)
 Append RC and dRC/dt
 Append IMF-Bz, IMF-By, MEF
 Append grid locations (both geo and qdmlt)
@@ -11,28 +9,24 @@ data/raw/SwA_{START}-{END}.nc  ->  data/interim/SwA_{START}-{END}_proc1.nc
 
 import sys
 import os
+import glob
+from copy import deepcopy
 import shutil
 import numpy as np
 import pandas as pd
 import xarray as xr
 from dask.diagnostics import ProgressBar
 from scipy.spatial import cKDTree as KDTree
-import eoxmagmod
-import pysat
+
+import hapiclient
 import chaosmagpy as cp
 
-# import geomagfu as gmfu
 from src.tools.time import mjd2000_to_datetimes
 from src.tools.coords import sph2cart
 from src.env import RC_FILE, REFRAD, ICOS_FILE
 from src.data.proc_env import RAW_FILE_PATHS, PYSAT_DIR, INT_FILE_PATHS, \
                          RAW_FILE_PATHS_TMP, INT_FILE_PATHS_TMP, \
                          IMF_FILE, START_TIME, END_TIME, DASK_OPTS
-
-pysat.utils.set_data_dir(PYSAT_DIR)
-
-CHAOS_MCO = eoxmagmod.load_model_shc(eoxmagmod.data.CHAOS6_CORE_LATEST)
-CHAOS_MLI = eoxmagmod.load_model_shc(eoxmagmod.data.CHAOS6_STATIC)
 
 
 def load_RC(RC_file=None):
@@ -77,6 +71,39 @@ def append_RC(ds):
     return ds
 
 
+def fill_to_nan(hapidata_in, hapimeta):
+    """HAPI: Replace bad values (fill values given in metadata) with NaN"""
+    hapidata = deepcopy(hapidata_in)
+    # HAPI returns metadata for parameters as a list of dictionaries
+    # - Loop through them
+    for metavar in hapimeta['parameters']:  
+        varname = metavar['name']
+        fillvalstr = metavar['fill']
+        if fillvalstr is None:
+            continue
+        vardata = hapidata[varname]
+        mask = vardata==float(fillvalstr)
+        nbad = np.count_nonzero(mask)
+        print('{}: {} fills NaNd'.format(varname, nbad))
+        vardata[mask] = np.nan
+    return hapidata, hapimeta
+
+
+def hapi_to_pandas(hapidata):
+    """Convert a HAPI numpy array to a pandas dataframe"""
+    df = pd.DataFrame(
+        columns=hapidata.dtype.names,
+        data=hapidata,
+    ).set_index("Time")
+    # Convert from hapitime to Python datetime
+    df.index = hapiclient.hapitime2datetime(df.index.values.astype(str))
+    # Remove timezone awareness
+    df.index = df.index.tz_convert("UTC").tz_convert(None)
+    # Rename to Timestamp to match viresclient
+    df.index.name = "Timestamp"
+    return df
+
+
 def build_IMF_df():
     """Build the (unsmoothed) IMF dataframe for the full time series.
 
@@ -88,17 +115,17 @@ def build_IMF_df():
             'BZ_GSM', 'BY_GSM', 'flow_speed'
 
     """
-    omni = pysat.Instrument(platform='omni', name='hro', tag='1min')
-    omni.download(start=START_TIME, stop=END_TIME, freq='MS')
-    # Should change from flow_speed to Vx
-    columns = ['BZ_GSM', 'BY_GSM', 'flow_speed']
-    df = pd.DataFrame()
-    date_array = pd.DatetimeIndex(
-        start=START_TIME, end=END_TIME, freq="D"
-    ).to_pydatetime()
-    for d in date_array:
-        omni.load(date=d)
-        df = pd.concat((df, omni.data[columns]))
+    # Using hapiclient, example:
+    # http://hapi-server.org/servers/#server=CDAWeb&dataset=OMNI_HRO2_1MIN&parameters=BZ_GSM&start=1995-01-01T00:00:00Z&stop=1995-01-03T00:00:00.000Z&return=script&format=python
+    server     = 'https://cdaweb.gsfc.nasa.gov/hapi'
+    dataset    = 'OMNI_HRO_1MIN'
+    parameters = 'BY_GSM,BZ_GSM,flow_speed'
+    start      = START_TIME.isoformat()
+    stop       = END_TIME.isoformat()
+    print("Fetching OMNI data")
+    data, meta = hapiclient.hapi(server, dataset, parameters, start, stop)
+    data, meta = fill_to_nan(data,meta)
+    df = hapi_to_pandas(data)
     return df
 
 
@@ -200,138 +227,6 @@ def append_IMF(ds):
     return ds
 
 
-def eval_CHAOS_core(times, lat, lon, rad_km):
-    """Calculate the core field up to degree 15.
-
-    Args:
-        times (ndarray): Times in MJD2000
-        lat (ndarray): Latitude
-        lon (ndarray): Longitude
-        rad_km (ndarray): Radius in km
-
-    """
-    coords = np.stack((lat, lon, rad_km), axis=1)
-    # mco = eoxmagmod.load_model_shc(eoxmagmod.data.CHAOS6_CORE_LATEST)
-    # return mco.eval(
-    #     times, coords, min_degree=1, max_degree=15,
-    #     scale=[1, 1, -1]
-    # )
-    return CHAOS_MCO.eval(
-        times, coords, min_degree=1, max_degree=15,
-        scale=[1, 1, -1]
-    )
-
-
-def eval_CHAOS_static(times, lat, lon, rad_km):
-    """Calculate the quasi-static field, n=16-110.
-
-    Args:
-        times (ndarray): Times in MJD2000
-        lat (ndarray): Latitude
-        lon (ndarray): Longitude
-        rad_km (ndarray): Radius in km
-
-    """
-    coords = np.stack((lat, lon, rad_km), axis=1)
-    # mco = eoxmagmod.load_model_shc(eoxmagmod.data.CHAOS6_CORE_LATEST)
-    # mli = eoxmagmod.load_model_shc(eoxmagmod.data.CHAOS6_STATIC)
-    # B_NEC_tdep = mco.eval(
-    #     times, coords, min_degree=16, max_degree=20,
-    #     scale=[1, 1, -1]
-    # )
-    # B_NEC_static = mli.eval(
-    #     times, coords, min_degree=21, max_degree=110,
-    #     scale=[1, 1, -1]
-    # )
-    B_NEC_tdep = CHAOS_MCO.eval(
-        times, coords, min_degree=16, max_degree=20,
-        scale=[1, 1, -1]
-    )
-    B_NEC_static = CHAOS_MLI.eval(
-        times, coords, min_degree=21, max_degree=110,
-        scale=[1, 1, -1]
-    )
-    return B_NEC_tdep + B_NEC_static
-
-
-def make_coord_dataarrays(ds):
-    """Prepare inputs for eoxmagmod.
-
-    Returns them as DataArrays so that we can use dask with xr.apply_ufunc
-
-    Args:
-        ds (xarray.Dataset)
-
-    Returns:
-        DataArray: MJD2000 times
-        DataArray: Latitude
-        DataArray: Longitude
-        DataArray: Radius in km
-
-    """
-    NS2DAYS = 1.0/(24*60*60*1e9)
-    times_mjd2000 = (
-        ds["Timestamp"] - np.datetime64('2000')
-    ).astype('int64')*NS2DAYS
-    lat = ds["Latitude"]
-    lon = ds["Longitude"]
-    rad_km = ds["Radius"]*1e-3
-
-    return times_mjd2000, lat, lon, rad_km
-
-
-def eval_mod_xr(ds, mod_eval_func):
-    """Use xarray's dask functionality to do model evaluation.
-
-    Args:
-        ds (Dataset): The input data, dask-chunked
-        mod_eval_func (func): the numpy-based evaluation function
-
-    Returns:
-        DataArray: B_NEC with "Timestamp" coords and "dim" dimension
-
-    """
-    return xr.apply_ufunc(
-            mod_eval_func, *make_coord_dataarrays(ds),
-            output_core_dims=[("dim",)],
-            dask="parallelized",
-            output_dtypes=[float],
-            output_sizes={"dim": 3})
-
-
-def append_CHAOS(ds):
-    """Append CHAOS evaluations to Dataset.
-
-    Args:
-        ds (Dataset)
-
-    Returns:
-        Dataset
-
-    """
-    print("Calculating CHAOS core field...")
-    with ProgressBar():
-        B_NEC_core = eval_mod_xr(ds, eval_CHAOS_core).compute(**DASK_OPTS)
-    print("Calculating CHAOS static field...")
-    with ProgressBar():
-        B_NEC_lith = eval_mod_xr(ds, eval_CHAOS_static).compute(**DASK_OPTS)
-    ds = ds.assign({
-        "B_NEC_CHAOS-6-Core_n1-15": B_NEC_core,
-        "B_NEC_CHAOS-6-Static_n16-110": B_NEC_lith,
-        "F_CHAOS-6-Core_n1-15":
-            np.sqrt(sum(B_NEC_core[:, i]**2 for i in (0, 1, 2))),
-        "F_CHAOS-6-Static_n16-110":
-            np.sqrt(sum(B_NEC_lith[:, i]**2 for i in (0, 1, 2)))
-        },
-    )
-    # ds = ds.assign({
-    #     "B_NEC_CHAOS6Core": eval_mod_xr(ds, eval_CHAOS_core),
-    #     "B_NEC_CHAOS6Static": eval_mod_xr(ds, eval_CHAOS_static)
-    #     },
-    # )
-    return ds
-
-
 def load_icos(filename=ICOS_FILE, groupname="40962"):
     return pd.read_hdf(os.path.join(filename), groupname)
 
@@ -386,48 +281,30 @@ def main(sat_ID):
         sat_ID (str): One of "ABC"
 
     """
-    file_in = RAW_FILE_PATHS[sat_ID]
-    file_in_tmp = RAW_FILE_PATHS_TMP[sat_ID]
-    file_out_tmp = INT_FILE_PATHS_TMP[sat_ID]
-    file_out = INT_FILE_PATHS[sat_ID]
     print("Processing Swarm", sat_ID)
-    print("Tmp in file:", file_in_tmp)
-    print("Tmp out file:", file_out_tmp)
-    print("Output:", file_out)
-    for filepath in [file_in_tmp, file_out_tmp, file_out]:
+    files_in_root = os.path.splitext(RAW_FILE_PATHS[sat_ID])[0]
+    files_in = glob.glob(f"{files_in_root}*.nc")
+    print("Found files:", files_in)
+    file_out = INT_FILE_PATHS[sat_ID]
+    print("Will output to:", file_out)
+    for filepath in [file_out]:
         if os.path.exists(filepath):
             os.remove(filepath)
-    # print("Copying to tmp...")
-    # shutil.copyfile(file_in, file_in_tmp)
-
     print("Loading dataset...")
-    # ds = xr.open_dataset(file_in_tmp)
-    ds = xr.open_dataset(file_in)
+    ds = xr.open_mfdataset(files_in)
     ds = ds.drop("Spacecraft")
-    # I don't know the best way to chunk
-    # See http://xarray.pydata.org/en/stable/dask.html
+    # Rechunk
     nchunks = 64
     ds = ds.chunk(int(len(ds.Timestamp)/nchunks))
-    # ds.load()  # will increase memory usage by a lot?
-    # ds.persist()
     print("DASK options:", DASK_OPTS)
     ds = (
         ds
         .pipe(append_RC)
         .pipe(append_IMF)
-        .pipe(append_CHAOS)
         .pipe(lambda x: assign_gridpoints(x))
         .pipe(lambda x: assign_gridpoints(x, qdmlt=True))
     )
-    # ds.to_netcdf(file_out_tmp)
-    # shutil.copyfile(file_out_tmp, file_out)
     ds.to_netcdf(file_out)
-
-    # delayed_obj = ds.to_netcdf(file_out_tmp, compute=False)
-    # print("Computing...")
-    # with ProgressBar():
-    #     # delayed_obj.compute(**DASK_OPTS)
-    #     delayed_obj.compute(scheduler="threads", num_workers=16)
     print("Done")
 
 

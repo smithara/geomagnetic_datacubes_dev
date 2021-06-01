@@ -10,7 +10,7 @@ START_TIME = dt.datetime(2014, 5, 1)
 END_TIME = dt.datetime(2019, 5, 1)
 # END_TIME = dt.datetime(2014, 6, 1)
 
-IMF_FILE = os.path.join(DATA_INT_DIR, "IMF_FILE.h5")
+IMF_FILE = os.path.join(DATA_RAW_DIR, "IMF_data.h5")
 
 RAW_FILE_PATHS = {}
 RAW_FILE_PATHS_TMP = {}
