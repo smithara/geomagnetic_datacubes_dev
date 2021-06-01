@@ -8,7 +8,7 @@ import pandas as pd
 import xarray as xr
 from scipy import sparse
 from scipy.linalg import cho_factor, cho_solve
-import eoxmagmod
+# import eoxmagmod
 import chaosmagpy as cp
 
 from ..env import REFRAD, ICOS_FILE, DATA_EXT_DIR

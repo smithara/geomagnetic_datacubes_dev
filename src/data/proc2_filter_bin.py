@@ -13,8 +13,8 @@ import xarray as xr
 from scipy.interpolate import interp1d
 from dask.diagnostics import ProgressBar
 
-from geomagnetic_datacubes_dev.env import ICOS_FILE, AEJ_FILES
-from geomagnetic_datacubes_dev.data.proc_env import INT_FILE_PATHS, PROCD_FILE_PATHS_ROOT, DASK_OPTS
+from src.env import ICOS_FILE, AEJ_FILES
+from src.data.proc_env import INT_FILE_PATHS, PROCD_FILE_PATHS_ROOT, DASK_OPTS
 
 CHAOS_COMBOS = {
     "MCO":          ["CHAOS-6-Core_n1-15"],

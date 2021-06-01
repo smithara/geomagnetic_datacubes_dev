@@ -4,11 +4,11 @@
 import os
 import datetime as dt
 
-from geomagnetic_datacubes_dev.env import DATA_RAW_DIR, DATA_INT_DIR, TMPDIR, DATA_PROCD_DIR
+from src.env import DATA_RAW_DIR, DATA_INT_DIR, TMPDIR, DATA_PROCD_DIR
 
 START_TIME = dt.datetime(2014, 5, 1)
-END_TIME = dt.datetime(2018, 5, 1)
-# END_TIME = dt.datetime(2014, 5, 31)
+# END_TIME = dt.datetime(2018, 5, 1)
+END_TIME = dt.datetime(2014, 5, 31)
 
 IMF_FILE = os.path.join(DATA_INT_DIR, "IMF_FILE.h5")
 

@@ -22,10 +22,10 @@ import pysat
 import chaosmagpy as cp
 
 # import geomagfu as gmfu
-from geomagnetic_datacubes_dev.tools.time import mjd2000_to_datetimes
-from geomagnetic_datacubes_dev.tools.coords import sph2cart
-from geomagnetic_datacubes_dev.env import RC_FILE, REFRAD, ICOS_FILE
-from geomagnetic_datacubes_dev.data.proc_env import RAW_FILE_PATHS, PYSAT_DIR, INT_FILE_PATHS, \
+from src.tools.time import mjd2000_to_datetimes
+from src.tools.coords import sph2cart
+from src.env import RC_FILE, REFRAD, ICOS_FILE
+from src.data.proc_env import RAW_FILE_PATHS, PYSAT_DIR, INT_FILE_PATHS, \
                          RAW_FILE_PATHS_TMP, INT_FILE_PATHS_TMP, \
                          IMF_FILE, START_TIME, END_TIME, DASK_OPTS
 

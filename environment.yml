@@ -1,0 +1,20 @@
+name: geomagcubes
+channels:
+  - conda-forge
+dependencies:
+  - python=3.8
+  - pip
+  - ipykernel
+  - numpy
+  - scipy
+  - matplotlib
+  - pandas
+  - xarray
+  - dask
+  - cartopy
+  - pytables
+  - h5py
+  - netcdf4
+  - pip:
+    - viresclient
+    - chaosmagpy

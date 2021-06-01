@@ -38,7 +38,7 @@ MODEL_DIR = join(PROJ_DIR, "src/models")
 # # RC index from http://www.spacecenter.dk/files/magnetic-models/RC/
 # RC_FILE = join(DATA_EXT_DIR, "RC_1997-2019_augmented.dat")
 # # Icosphere file
-# ICOS_FILE = join(DATA_EXT_DIR, "icosphere_data.h5")
+ICOS_FILE = join(DATA_EXT_DIR, "icosphere_data.h5")
 # # AEJ estimate file
 # AEJ_FILES = {
 #     sat_ID: join(DATA_PROCD_DIR, f"AEJ_Sw{sat_ID}.h5")

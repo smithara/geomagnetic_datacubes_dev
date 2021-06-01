@@ -1,8 +1,8 @@
 import os
 import sys
 
-from geomagnetic_datacubes_dev.data.proc_env import RAW_FILE_PATHS, INT_FILE_PATHS  #, PROCD_FILE_PATHS
-from geomagnetic_datacubes_dev.data import proc0_fetch_data, proc1_append_data, proc2_filter_bin, proc3_rebin_IONOadjust
+from src.data.proc_env import RAW_FILE_PATHS, INT_FILE_PATHS  #, PROCD_FILE_PATHS
+from src.data import proc0_fetch_data, proc1_append_data, proc2_filter_bin, proc3_rebin_IONOadjust
 
 
 def main(sat_ID):

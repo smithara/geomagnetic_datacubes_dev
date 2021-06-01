@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from viresclient import SwarmRequest
 
-from geomagnetic_datacubes_dev.env import AEJ_FILES
+from src.env import AEJ_FILES
 
 start_time = dt.datetime(2014, 1, 1)
 end_time = dt.datetime(2019, 1, 1)

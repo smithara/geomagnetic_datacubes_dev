@@ -5,8 +5,8 @@ import sys
 import numpy as np
 import xarray as xr
 
-from geomagnetic_datacubes_dev.data.proc_env import INT_FILE_PATHS, PROCD_FILE_PATHS_ROOT
-from geomagnetic_datacubes_dev.data.proc2_filter_bin import apply_filters, reduce2grid, CHAOS_COMBOS
+from src.data.proc_env import INT_FILE_PATHS, PROCD_FILE_PATHS_ROOT
+from src.data.proc2_filter_bin import apply_filters, reduce2grid, CHAOS_COMBOS
 
 # Define new custom residuals based on the generated IONO0, LITHO1 models
 #   LITH0 (unlisted) is from the residual (MCO_MMA))
