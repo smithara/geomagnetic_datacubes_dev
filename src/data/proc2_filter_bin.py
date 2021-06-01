@@ -13,19 +13,19 @@ import xarray as xr
 from scipy.interpolate import interp1d
 from dask.diagnostics import ProgressBar
 
-from src.env import ICOS_FILE, AEJ_FILES
+from src.env import ICOS_FILE#, AEJ_FILES
 from src.data.proc_env import INT_FILE_PATHS, PROCD_FILE_PATHS_ROOT, DASK_OPTS
 
 CHAOS_COMBOS = {
-    "MCO":          ["CHAOS-6-Core_n1-15"],
-    "MCO_MMA":      ["CHAOS-6-Core_n1-15", "CHAOS-6-MMA-Primary", "CHAOS-6-MMA-Secondary"],
-    "MCO_MMA_MLI":  ["CHAOS-6-Core_n1-15", "CHAOS-6-MMA-Primary", "CHAOS-6-MMA-Secondary", "CHAOS-6-Static_n16-110"],
+    "MCO":          ["CHAOS-MCO"],
+    "MCO_MMA":      ["CHAOS-MCO", "CHAOS-6-MMA"],
+    "MCO_MMA_MLI":  ["CHAOS-MCO", "CHAOS-6-MMA", "CHAOS-Static_n16plus"],
 }
 CI_COMBOS = {
     "MCO":             ["MCO_SHA_2C"],
-    "MCO_MMA":         ["MCO_SHA_2C", "MMA_SHA_2C-Primary", "MMA_SHA_2C-Secondary"],
-    "MCO_MMA_MIO":     ["MCO_SHA_2C", "MMA_SHA_2C-Primary", "MMA_SHA_2C-Secondary", "MIO_SHA_2C-Primary", "MIO_SHA_2C-Secondary"],
-    "MCO_MMA_MIO_MLI": ["MCO_SHA_2C", "MMA_SHA_2C-Primary", "MMA_SHA_2C-Secondary", "MIO_SHA_2C-Primary", "MIO_SHA_2C-Secondary", "MLI_SHA_2C"]
+    "MCO_MMA":         ["MCO_SHA_2C", "MMA_SHA_2C"],
+    "MCO_MMA_MIO":     ["MCO_SHA_2C", "MMA_SHA_2C", "MIO_SHA_2C"],
+    "MCO_MMA_MIO_MLI": ["MCO_SHA_2C", "MMA_SHA_2C", "MIO_SHA_2C", "MLI_SHA_2C"]
 }
 
 
@@ -127,38 +127,38 @@ def apply_filters(ds, filters=None, sat_ID=None):
     return ds
 
 
-def filter_AEJ(ds, sat_ID=None, aej_files=AEJ_FILES, threshold=50):
-    """Return a dataset filtered by the AEJ strength estimate."""
-    # Load AEJ dataframe and convert the index
-    aej = pd.read_hdf(aej_files[sat_ID], "set1")
-    # aej["Timestamp"] = pd.to_datetime(aej["t_UTC"], unit="s")  # FOR OLD FILE
-    aej = aej.reset_index()
-    aej = aej.set_index("Timestamp")
-    # Interpolate to find the nearest AEJ estimates at all points in Dataset
-    interp = interp1d(
-        aej.index.values.astype('uint64'), aej["AEJ_strength"].abs().values,
-        kind="nearest"
-    )
-    aej_interp = interp(ds["Timestamp"].values.astype('uint64'))
-    # Append the strength estimate to Dataset
-    ds = ds.assign(
-        {"aej_strength": ("Timestamp", aej_interp)}
-    )
-    # Identify the threshold values to reject passes
-    threshold_north = np.nanpercentile(
-        np.unique(ds["aej_strength"].where(ds["Latitude"] > 0)),
-        threshold
-    )
-    threshold_south = np.nanpercentile(
-        np.unique(ds["aej_strength"].where(ds["Latitude"] < 0)),
-        threshold
-    )
-    return ds.where(
-        (xr.ufuncs.fabs(ds["QDLat"]) < 50) +
-        ((ds["QDLat"] >= 50) & (ds["aej_strength"] < threshold_north)) +
-        ((ds["QDLat"] <= -50) & (ds["aej_strength"] < threshold_south)),
-        drop=True
-    )
+# def filter_AEJ(ds, sat_ID=None, aej_files=AEJ_FILES, threshold=50):
+#     """Return a dataset filtered by the AEJ strength estimate."""
+#     # Load AEJ dataframe and convert the index
+#     aej = pd.read_hdf(aej_files[sat_ID], "set1")
+#     # aej["Timestamp"] = pd.to_datetime(aej["t_UTC"], unit="s")  # FOR OLD FILE
+#     aej = aej.reset_index()
+#     aej = aej.set_index("Timestamp")
+#     # Interpolate to find the nearest AEJ estimates at all points in Dataset
+#     interp = interp1d(
+#         aej.index.values.astype('uint64'), aej["AEJ_strength"].abs().values,
+#         kind="nearest"
+#     )
+#     aej_interp = interp(ds["Timestamp"].values.astype('uint64'))
+#     # Append the strength estimate to Dataset
+#     ds = ds.assign(
+#         {"aej_strength": ("Timestamp", aej_interp)}
+#     )
+#     # Identify the threshold values to reject passes
+#     threshold_north = np.nanpercentile(
+#         np.unique(ds["aej_strength"].where(ds["Latitude"] > 0)),
+#         threshold
+#     )
+#     threshold_south = np.nanpercentile(
+#         np.unique(ds["aej_strength"].where(ds["Latitude"] < 0)),
+#         threshold
+#     )
+#     return ds.where(
+#         (xr.ufuncs.fabs(ds["QDLat"]) < 50) +
+#         ((ds["QDLat"] >= 50) & (ds["aej_strength"] < threshold_north)) +
+#         ((ds["QDLat"] <= -50) & (ds["aej_strength"] < threshold_south)),
+#         drop=True
+#     )
 
 
 def append_resid(ds, model_list, residual_combo_name, residual_combo_name_F):
@@ -182,9 +182,9 @@ def append_resid(ds, model_list, residual_combo_name, residual_combo_name_F):
     compound_model_B_NEC = sum(ds[f"B_NEC_{model}"] for model in model_list)
     ds = ds.assign({
         residual_combo_name: ds["B_NEC"] - compound_model_B_NEC,
-        residual_combo_name_F:
-            ds["F"]
-            - np.sqrt(sum(compound_model_B_NEC[:, i]**2 for i in (0, 1, 2)))
+        # residual_combo_name_F:
+        #     ds["F"]
+        #     - np.sqrt(sum(compound_model_B_NEC[:, i]**2 for i in (0, 1, 2)))
     })
     return ds
 
@@ -216,7 +216,7 @@ def reduce2grid(ds, model_group=None, grid="geo"):
         residual_combo_name = "B_NEC_res_" + model_combo_name
         residual_names.append(residual_combo_name)
         residual_combo_name_F = "F_res_" + model_combo_name
-        residual_names.append(residual_combo_name_F)
+        # residual_names.append(residual_combo_name_F)
         ds = append_resid(
             ds, model_list=model_group[model_combo_name],
             residual_combo_name=residual_combo_name,
@@ -226,7 +226,7 @@ def reduce2grid(ds, model_group=None, grid="geo"):
     varnames = [
         *residual_names, "Radius",
         *[f"B_NEC_{mod}" for mod in list(model_group.values())[-1]],
-        *[f"F_{mod}" for mod in list(model_group.values())[-1]]
+        # *[f"F_{mod}" for mod in list(model_group.values())[-1]]
     ]
     # Shrink the dataset to only include the chosen residual and
     #   build the groupby object to identify grid locations of data
@@ -304,46 +304,57 @@ def main(sat_ID):
     file_out_root = PROCD_FILE_PATHS_ROOT[sat_ID]
     filter_and_bin(
         file_in, file_out_root,
-        filters=["dRC"], model_combos=CI_COMBOS,
-        name="_filter-RC_CI"
+        filters=["dRC", "IMF_Em"], model_combos=CI_COMBOS,
+        name="_filter-RC+MEF_CI_"
     )
-    filter_and_bin(
-        file_in, file_out_root,
-        filters=["dRC"], model_combos=CHAOS_COMBOS,
-        name="_filter-RC_CHAOS"
-    )
-    # Splitting by IMF clock angle
-    filter_and_bin(
-        file_in, file_out_root,
-        filters=["dRC", "IMFZ+Y+"], model_combos=CHAOS_COMBOS,
-        name="_filter-RC-IMFZ+Y+_CHAOS"
-    )
-    filter_and_bin(
-        file_in, file_out_root,
-        filters=["dRC", "IMFZ-Y+"], model_combos=CHAOS_COMBOS,
-        name="_filter-RC-IMFZ-Y+_CHAOS"
-    )
-    filter_and_bin(
-        file_in, file_out_root,
-        filters=["dRC", "IMFZ-Y-"], model_combos=CHAOS_COMBOS,
-        name="_filter-RC-IMFZ-Y-_CHAOS"
-    )
-    filter_and_bin(
-        file_in, file_out_root,
-        filters=["dRC", "IMFZ+Y-"], model_combos=CHAOS_COMBOS,
-        name="_filter-RC-IMFZ+Y-_CHAOS"
-    )
-    # Applying MEF filter and then MEF+AEJ filters
     filter_and_bin(
         file_in, file_out_root,
         filters=["dRC", "IMF_Em"], model_combos=CHAOS_COMBOS,
-        name="_filter-RC-MEF_CHAOS"
+        name="_filter-RC+MEF_CHAOS_"
     )
-    filter_and_bin(
-        file_in, file_out_root,
-        filters=["dRC", "IMF_Em", "AEJ"], model_combos=CHAOS_COMBOS,
-        name="_filter-RC-MEF-AEJ_CHAOS"
-    )
+    ## OLD CONFIGURATION:
+    # filter_and_bin(
+    #     file_in, file_out_root,
+    #     filters=["dRC"], model_combos=CI_COMBOS,
+    #     name="_filter-RC_CI"
+    # )
+    # filter_and_bin(
+    #     file_in, file_out_root,
+    #     filters=["dRC"], model_combos=CHAOS_COMBOS,
+    #     name="_filter-RC_CHAOS"
+    # )
+    # # Splitting by IMF clock angle
+    # filter_and_bin(
+    #     file_in, file_out_root,
+    #     filters=["dRC", "IMFZ+Y+"], model_combos=CHAOS_COMBOS,
+    #     name="_filter-RC-IMFZ+Y+_CHAOS"
+    # )
+    # filter_and_bin(
+    #     file_in, file_out_root,
+    #     filters=["dRC", "IMFZ-Y+"], model_combos=CHAOS_COMBOS,
+    #     name="_filter-RC-IMFZ-Y+_CHAOS"
+    # )
+    # filter_and_bin(
+    #     file_in, file_out_root,
+    #     filters=["dRC", "IMFZ-Y-"], model_combos=CHAOS_COMBOS,
+    #     name="_filter-RC-IMFZ-Y-_CHAOS"
+    # )
+    # filter_and_bin(
+    #     file_in, file_out_root,
+    #     filters=["dRC", "IMFZ+Y-"], model_combos=CHAOS_COMBOS,
+    #     name="_filter-RC-IMFZ+Y-_CHAOS"
+    # )
+    # # Applying MEF filter and then MEF+AEJ filters
+    # filter_and_bin(
+    #     file_in, file_out_root,
+    #     filters=["dRC", "IMF_Em"], model_combos=CHAOS_COMBOS,
+    #     name="_filter-RC-MEF_CHAOS"
+    # )
+    # filter_and_bin(
+    #     file_in, file_out_root,
+    #     filters=["dRC", "IMF_Em", "AEJ"], model_combos=CHAOS_COMBOS,
+    #     name="_filter-RC-MEF-AEJ_CHAOS"
+    # )
 
 
 if __name__ == "__main__":
