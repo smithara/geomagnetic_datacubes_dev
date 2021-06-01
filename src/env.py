@@ -35,9 +35,9 @@ MODEL_DIR = join(PROJ_DIR, "src/models")
 # # Auxiliary file locations
 # # File from BGS
 # BADDATALIST = join(DATA_EXT_DIR, "badDataPatterns.lst")
-# # RC index from http://www.spacecenter.dk/files/magnetic-models/RC/
-# RC_FILE = join(DATA_EXT_DIR, "RC_1997-2019_augmented.dat")
-# # Icosphere file
+# RC index from http://www.spacecenter.dk/files/magnetic-models/RC/
+RC_FILE = join(DATA_EXT_DIR, "RC_1997-2021_augmented.dat")
+# Icosphere file from https://github.com/smithara/icosphere_py
 ICOS_FILE = join(DATA_EXT_DIR, "icosphere_data.h5")
 # # AEJ estimate file
 # AEJ_FILES = {
