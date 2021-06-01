@@ -7,8 +7,8 @@ import datetime as dt
 from src.env import DATA_RAW_DIR, DATA_INT_DIR, TMPDIR, DATA_PROCD_DIR
 
 START_TIME = dt.datetime(2014, 5, 1)
-# END_TIME = dt.datetime(2018, 5, 1)
-END_TIME = dt.datetime(2014, 5, 31)
+END_TIME = dt.datetime(2019, 5, 1)
+# END_TIME = dt.datetime(2014, 6, 1)
 
 IMF_FILE = os.path.join(DATA_INT_DIR, "IMF_FILE.h5")
 

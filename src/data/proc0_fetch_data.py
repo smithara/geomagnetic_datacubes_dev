@@ -7,7 +7,8 @@ It will be saved in data/raw/SwA_{START}-{END}.nc
 """
 
 import sys
-import logging
+import os
+import pandas as pd
 from viresclient import SwarmRequest
 
 from src.env import TMPDIR
@@ -16,36 +17,47 @@ from src.data.proc_env import RAW_FILE_PATHS, START_TIME, END_TIME
 
 def fetch_data(sat_ID):
     """Fetch data for one satellite as xarray.Dataset."""
+
+    # Create time-chunks to use, approximately 6 months each
+    n_years = round((END_TIME - START_TIME).days/365)
+    dates = pd.date_range(
+        start=START_TIME, end=END_TIME, periods=2*n_years
+    ).to_pydatetime()
+    start_times = dates[:-1]
+    end_times = dates[1:]
+    filenames = [
+        os.path.splitext(RAW_FILE_PATHS[sat_ID])[0] + f"-{n}.nc"
+        for n in range(len(dates))
+    ]
+
+    # Configure data to fetch
     request = SwarmRequest("https://vires.services/ows")
-    request.set_collection("SW_OPER_MAG{}_LR_1B".format(sat_ID))
+    request.set_collection(f"SW_OPER_MAG{sat_ID}_LR_1B")
     request.set_products(
-        measurements=["B_NEC", "F"],
+        measurements=["B_NEC"],
         models=[
-            # "MCO_SHA_2C",
-            # "MLI_SHA_2C",
-            # "MMA_SHA_2C-Primary", "MMA_SHA_2C-Secondary",
-            # "MIO_SHA_2C-Primary", "MIO_SHA_2C-Secondary",
-            # "CHAOS-6-MMA-Primary", "CHAOS-6-MMA-Secondary",
+            "'CHAOS-MCO' = 'CHAOS-Core'(max_degree=15)",
+            "'CHAOS-Static_n16plus' = 'CHAOS-Core'(min_degree=16) + 'CHAOS-Static'",
+            "CHAOS-MMA",
+            "MCO_SHA_2C",
+            "MMA_SHA_2C",
+            "MIO_SHA_2C",
+            "MLI_SHA_2C",
         ],
         auxiliaries=[
-            # "QDLat",
-            # "QDLon",
-            # "OrbitNumber",
-            # "MLT",
-            # "SunZenithAngle",
-            # "Kp",
-            # "Dst",
+            "QDLat",
+            "QDLon",
+            "OrbitNumber",
+            "MLT",
+            "SunZenithAngle",
+            "Kp",
             # "IMF_BZ_GSM",
             # "IMF_BY_GSM",
             # "IMF_V",
-            #
-            # "B_NEC_AMPS",
-            # "F_AMPS"
         ],
         residuals=False,
         sampling_step="PT10S"
-        )
-
+    )
     request.set_range_filter("Kp", 0, 3)
     request.set_range_filter("SunZenithAngle", 100, 180)
 
@@ -60,24 +72,30 @@ def fetch_data(sat_ID):
         # Currently would need to download all and do flag filtering here instead
         request.set_range_filter("Flags_B", 0, 9)
 
-    data = request.get_between(
-        start_time=START_TIME,
-        end_time=END_TIME,
-        tmpdir=TMPDIR
-    )
+    for start, end, filename in zip(start_times, end_times, filenames):
+        print(f"Fetching {start} to {end}")
+        print(f"... to save in {filename}")
+        data = request.get_between(
+            start_time=start,
+            end_time=end,
+            tmpdir=TMPDIR
+        )
+        ds = data.as_xarray()
+        ds.to_netcdf(filename)
 
-    return data.as_xarray()
+    return
 
 
 def main(sat_ID):
     """Save data from `sat_ID` to `filepath`."""
-    logging.info("Fetching data for Swarm " + sat_ID)
-    filepath = RAW_FILE_PATHS[sat_ID]
-    logging.info("Output:", filepath)
+    print("Fetching data for Swarm " + sat_ID)
+    fetch_data(sat_ID)
+    # filepath = RAW_FILE_PATHS[sat_ID]
+    # logging.info("Output:", filepath)
     # print("Fetching data for Swarm " + sat_ID)
     # print("Output:", filepath)
-    ds = fetch_data(sat_ID)
-    ds.to_netcdf(filepath)
+    # ds = fetch_data(sat_ID)
+    # ds.to_netcdf(filepath)
     # print("Saved file: " + filepath)
     # logging.debug("Saved file: " + filepath)
 
