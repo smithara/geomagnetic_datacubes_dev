@@ -18,8 +18,8 @@ from src.data.proc_env import INT_FILE_PATHS, PROCD_FILE_PATHS_ROOT, DASK_OPTS
 
 CHAOS_COMBOS = {
     "MCO":          ["CHAOS-MCO"],
-    "MCO_MMA":      ["CHAOS-MCO", "CHAOS-6-MMA"],
-    "MCO_MMA_MLI":  ["CHAOS-MCO", "CHAOS-6-MMA", "CHAOS-Static_n16plus"],
+    "MCO_MMA":      ["CHAOS-MCO", "CHAOS-MMA"],
+    "MCO_MMA_MLI":  ["CHAOS-MCO", "CHAOS-MMA", "CHAOS-Static_n16plus"],
 }
 CI_COMBOS = {
     "MCO":             ["MCO_SHA_2C"],
@@ -53,7 +53,7 @@ def apply_filters(ds, filters=None, sat_ID=None):
     print("Number of data in:", len(ds["Timestamp"]))
     fabs = xr.ufuncs.fabs
     default_filters = ["dRC", "IMF_Em"]
-    available_filters = ["dRC", "IMF_Em", "AEJ",
+    available_filters = ["dRC", "IMF_Em", "AEJ", "Kp", "SunZenithAngle",
                          "IMFZ+Y+", "IMFZ-Y+", "IMFZ-Y-", "IMFZ+Y-"]
     if filters is None:
         filters = default_filters
@@ -69,6 +69,21 @@ def apply_filters(ds, filters=None, sat_ID=None):
         print("Number of data out:", len(ds["Timestamp"]))
         return ds
 
+    if "Kp" in filters:
+        ds = filter_and_report(
+            ds,
+            lambda dsx: dsx.where((fabs(dsx["Kp"]) < 3), drop=True),
+            "Kp"
+        )
+    if "SunZenithAngle" in filters:
+        ds = filter_and_report(
+            ds,
+            lambda dsx: dsx.where(
+                (fabs(dsx["SunZenithAngle"]) > 100),
+                drop=True
+            ),
+            "SunZenithAngle"
+        )
     if "dRC" in filters:
         ds = filter_and_report(
             ds,
@@ -273,8 +288,10 @@ def create_binned_datasets(
 
 def filter_and_bin(
             file_in, file_out_root,
-            filters=["dRC", "IMF_Em", "AEJ"], model_combos=CHAOS_COMBOS,
-            name="_filter-RC-MEF-AEJ_CHAOS"
+            filters=["Kp", "SunZenithAngle", "dRC", "IMF_Em", "AEJ"],
+            model_combos=CHAOS_COMBOS,
+            name="_filter-RC-MEF-AEJ_CHAOS",
+            sat_ID="A"
         ):
     """Load file_in, apply filters and binning, and save as file_out."""
     print("Input:", file_in)
@@ -303,58 +320,37 @@ def main(sat_ID):
     file_in = INT_FILE_PATHS[sat_ID]
     file_out_root = PROCD_FILE_PATHS_ROOT[sat_ID]
     filter_and_bin(
-        file_in, file_out_root,
-        filters=["dRC", "IMF_Em"], model_combos=CI_COMBOS,
+        file_in, file_out_root, sat_ID=sat_ID,
+        filters=["Kp", "SunZenithAngle", "dRC", "IMF_Em"], model_combos=CI_COMBOS,
         name="_filter-RC+MEF_CI_"
     )
     filter_and_bin(
-        file_in, file_out_root,
-        filters=["dRC", "IMF_Em"], model_combos=CHAOS_COMBOS,
+        file_in, file_out_root, sat_ID=sat_ID,
+        filters=["Kp", "SunZenithAngle", "dRC", "IMF_Em"], model_combos=CHAOS_COMBOS,
         name="_filter-RC+MEF_CHAOS_"
     )
-    ## OLD CONFIGURATION:
-    # filter_and_bin(
-    #     file_in, file_out_root,
-    #     filters=["dRC"], model_combos=CI_COMBOS,
-    #     name="_filter-RC_CI"
-    # )
-    # filter_and_bin(
-    #     file_in, file_out_root,
-    #     filters=["dRC"], model_combos=CHAOS_COMBOS,
-    #     name="_filter-RC_CHAOS"
-    # )
-    # # Splitting by IMF clock angle
-    # filter_and_bin(
-    #     file_in, file_out_root,
-    #     filters=["dRC", "IMFZ+Y+"], model_combos=CHAOS_COMBOS,
-    #     name="_filter-RC-IMFZ+Y+_CHAOS"
-    # )
-    # filter_and_bin(
-    #     file_in, file_out_root,
-    #     filters=["dRC", "IMFZ-Y+"], model_combos=CHAOS_COMBOS,
-    #     name="_filter-RC-IMFZ-Y+_CHAOS"
-    # )
-    # filter_and_bin(
-    #     file_in, file_out_root,
-    #     filters=["dRC", "IMFZ-Y-"], model_combos=CHAOS_COMBOS,
-    #     name="_filter-RC-IMFZ-Y-_CHAOS"
-    # )
-    # filter_and_bin(
-    #     file_in, file_out_root,
-    #     filters=["dRC", "IMFZ+Y-"], model_combos=CHAOS_COMBOS,
-    #     name="_filter-RC-IMFZ+Y-_CHAOS"
-    # )
-    # # Applying MEF filter and then MEF+AEJ filters
-    # filter_and_bin(
-    #     file_in, file_out_root,
-    #     filters=["dRC", "IMF_Em"], model_combos=CHAOS_COMBOS,
-    #     name="_filter-RC-MEF_CHAOS"
-    # )
-    # filter_and_bin(
-    #     file_in, file_out_root,
-    #     filters=["dRC", "IMF_Em", "AEJ"], model_combos=CHAOS_COMBOS,
-    #     name="_filter-RC-MEF-AEJ_CHAOS"
-    # )
+
+    # Splitting by IMF clock angle
+    filter_and_bin(
+        file_in, file_out_root, sat_ID=sat_ID,
+        filters=["Kp", "SunZenithAngle", "dRC", "IMF_Em", "IMFZ+Y+"], model_combos=CHAOS_COMBOS,
+        name="_filter-RC+MEF+IMFZ+Y+_CHAOS_"
+    )
+    filter_and_bin(
+        file_in, file_out_root, sat_ID=sat_ID,
+        filters=["Kp", "SunZenithAngle", "dRC", "IMF_Em", "IMFZ-Y+"], model_combos=CHAOS_COMBOS,
+        name="_filter-RC+MEF+IMFZ-Y+_CHAOS_"
+    )
+    filter_and_bin(
+        file_in, file_out_root, sat_ID=sat_ID,
+        filters=["Kp", "SunZenithAngle", "dRC", "IMF_Em", "IMFZ-Y-"], model_combos=CHAOS_COMBOS,
+        name="_filter-RC+MEF+IMFZ-Y-_CHAOS_"
+    )
+    filter_and_bin(
+        file_in, file_out_root, sat_ID=sat_ID,
+        filters=["Kp", "SunZenithAngle", "dRC", "IMF_Em", "IMFZ+Y-"], model_combos=CHAOS_COMBOS,
+        name="_filter-RC+MEF+IMFZ+Y-_CHAOS_"
+    )
 
 
 if __name__ == "__main__":

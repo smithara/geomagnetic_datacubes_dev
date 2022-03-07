@@ -5,16 +5,26 @@ dependencies:
   - python=3.8
   - pip
   - ipykernel
-  - numpy
-  - scipy
-  - matplotlib
-  - pandas
-  - xarray
-  - dask
-  - cartopy
-  - pytables
-  - h5py
-  - netcdf4
+  - numpy=1.21
+  - scipy=1.7
+  - matplotlib=3.4
+  - pandas=1.3
+  - xarray=0.20
+  - dask=2021.11
+  - cartopy=0.20
+  - pytables=3.6
+  - h5py=3.4
+  - netcdf4=1.5
+  - tenacity=8.0
+  - zarr=2.11
+  # - graphviz=3.0
+  # - numba=0.55
+  - hvplot=0.7
+  - datashader=0.13
+  - pooch=1.6
   - pip:
-    - viresclient
-    - chaosmagpy
+    - viresclient==0.9.1
+    - hapiclient==0.2.1
+    - chaosmagpy==0.7.1
+variables:
+  HDF5_USE_FILE_LOCKING: "FALSE"

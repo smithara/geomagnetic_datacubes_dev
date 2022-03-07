@@ -18,13 +18,12 @@ import xarray as xr
 from dask.diagnostics import ProgressBar
 from scipy.spatial import cKDTree as KDTree
 
-import hapiclient
 import chaosmagpy as cp
 
 from src.tools.time import mjd2000_to_datetimes
 from src.tools.coords import sph2cart
 from src.env import RC_FILE, REFRAD, ICOS_FILE
-from src.data.proc_env import RAW_FILE_PATHS, PYSAT_DIR, INT_FILE_PATHS, \
+from src.data.proc_env import RAW_FILE_PATHS, INT_FILE_PATHS, \
                          RAW_FILE_PATHS_TMP, INT_FILE_PATHS_TMP, \
                          IMF_FILE, START_TIME, END_TIME, DASK_OPTS
 
@@ -69,64 +68,6 @@ def append_RC(ds):
     # ds["dRC"] = ("Timestamp",), RC["dRC"]
     ds = ds.assign(RC=RC["RC"], dRC=RC["dRC"])
     return ds
-
-
-def fill_to_nan(hapidata_in, hapimeta):
-    """HAPI: Replace bad values (fill values given in metadata) with NaN"""
-    hapidata = deepcopy(hapidata_in)
-    # HAPI returns metadata for parameters as a list of dictionaries
-    # - Loop through them
-    for metavar in hapimeta['parameters']:  
-        varname = metavar['name']
-        fillvalstr = metavar['fill']
-        if fillvalstr is None:
-            continue
-        vardata = hapidata[varname]
-        mask = vardata==float(fillvalstr)
-        nbad = np.count_nonzero(mask)
-        print('{}: {} fills NaNd'.format(varname, nbad))
-        vardata[mask] = np.nan
-    return hapidata, hapimeta
-
-
-def hapi_to_pandas(hapidata):
-    """Convert a HAPI numpy array to a pandas dataframe"""
-    df = pd.DataFrame(
-        columns=hapidata.dtype.names,
-        data=hapidata,
-    ).set_index("Time")
-    # Convert from hapitime to Python datetime
-    df.index = hapiclient.hapitime2datetime(df.index.values.astype(str))
-    # Remove timezone awareness
-    df.index = df.index.tz_convert("UTC").tz_convert(None)
-    # Rename to Timestamp to match viresclient
-    df.index.name = "Timestamp"
-    return df
-
-
-def build_IMF_df():
-    """Build the (unsmoothed) IMF dataframe for the full time series.
-
-    OMNI 1-min data:
-    https://omniweb.gsfc.nasa.gov/html/omni_min_data.html#4b
-
-    Returns:
-        Dataframe: containing 1-min values for:
-            'BZ_GSM', 'BY_GSM', 'flow_speed'
-
-    """
-    # Using hapiclient, example:
-    # http://hapi-server.org/servers/#server=CDAWeb&dataset=OMNI_HRO2_1MIN&parameters=BZ_GSM&start=1995-01-01T00:00:00Z&stop=1995-01-03T00:00:00.000Z&return=script&format=python
-    server     = 'https://cdaweb.gsfc.nasa.gov/hapi'
-    dataset    = 'OMNI_HRO_1MIN'
-    parameters = 'BY_GSM,BZ_GSM,flow_speed'
-    start      = START_TIME.isoformat()
-    stop       = END_TIME.isoformat()
-    print("Fetching OMNI data")
-    data, meta = hapiclient.hapi(server, dataset, parameters, start, stop)
-    data, meta = fill_to_nan(data,meta)
-    df = hapi_to_pandas(data)
-    return df
 
 
 def calc_Em(By, Bz, v):
@@ -207,9 +148,6 @@ def build_IMF_smooth(IMF):
 
 
 def append_IMF(ds):
-    if not os.path.exists(IMF_FILE):
-        print("Building IMF file...")
-        build_IMF_df().to_hdf(IMF_FILE, key="IMF")
     print("Appending IMF data...")
     IMF = pd.read_hdf(IMF_FILE, "IMF")
     IMF["Em"] = calc_Em(
@@ -281,11 +219,13 @@ def main(sat_ID):
         sat_ID (str): One of "ABC"
 
     """
+    file_out = INT_FILE_PATHS[sat_ID]
+    if os.path.exists(file_out):
+        print("Skipping. File already exists:", file_out)
     print("Processing Swarm", sat_ID)
     files_in_root = os.path.splitext(RAW_FILE_PATHS[sat_ID])[0]
     files_in = glob.glob(f"{files_in_root}*.nc")
     print("Found files:", files_in)
-    file_out = INT_FILE_PATHS[sat_ID]
     print("Will output to:", file_out)
     for filepath in [file_out]:
         if os.path.exists(filepath):
@@ -305,7 +245,7 @@ def main(sat_ID):
         .pipe(lambda x: assign_gridpoints(x, qdmlt=True))
     )
     ds.to_netcdf(file_out)
-    print("Done")
+    print("Done - saved file", file_out)
 
 
 if __name__ == "__main__":

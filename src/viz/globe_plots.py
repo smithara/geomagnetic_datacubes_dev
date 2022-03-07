@@ -11,14 +11,15 @@ import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 from matplotlib.colorbar import ColorbarBase
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from mpl_toolkits.axes_grid1.colorbar import colorbar
+# from mpl_toolkits.axes_grid1.colorbar import colorbar
+from matplotlib import colorbar
 from cartopy.mpl.geoaxes import GeoAxes
 from mpl_toolkits.axes_grid1 import AxesGrid
 
 import chaosmagpy as cp
 
 # from src.data.proc2_filter_bin import CHAOS_COMBOS, CI_COMBOS
-plt.rcParams.update({"font.size": 20})
+plt.rcParams.update({"font.size": 20, "mpl_toolkits.legacy_colorbar": False})
 
 component_to_idx = {"N": 0, "E": 1, "C": 2}
 NEC_to_XYZ = {"N": "X", "E": "Y", "C": "Z"}
@@ -42,7 +43,7 @@ def make_model_combo_plots(
     """
     if not fig:
         fig = plt.figure(figsize=(25, 25))
-    plt.rcParams.update({"font.size": 20})
+    plt.rcParams.update({"font.size": fontsize})
     norms = [Normalize(*norm) for norm in norms]
     if model_group == "CHAOS":
         nrows_ncols = (3, 3)
@@ -105,7 +106,7 @@ def make_model_combo_plots(
     axes[0, 1].set_title("B$_E$")
     axes[0, 2].set_title("B$_C$")
 
-    fig.tight_layout()
+    # fig.tight_layout()
     fig.subplots_adjust(hspace=0, wspace=0)
 
     return fig

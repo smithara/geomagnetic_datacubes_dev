@@ -27,9 +27,9 @@ DATA_EXT_DIR = join(PROJ_DIR, "data/external")
 DATA_PROCD_DIR = join(PROJ_DIR, "data/processed")
 MODEL_DIR = join(PROJ_DIR, "src/models")
 
-# ###############################################################################
-# # Figures directory
-# FIGDIR = join(PROJ_DIR, "reports/figures")
+###############################################################################
+# Figures directory
+FIGDIR = join(PROJ_DIR, "reports/figures")
 
 # ###############################################################################
 # # Auxiliary file locations
