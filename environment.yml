@@ -2,6 +2,14 @@ name: geomagcubes
 channels:
   - conda-forge
 dependencies:
+  # # Jupyter dev environment
+  # # Uncomment all these to enable use of JupyterLab
+  # - jupyterlab=3.2
+  # - pyviz_comms=2.1
+  # - jupyterlab-git
+  # - jupyterlab-lsp
+  # - jupyter-lsp-python
+  # - jupyter-resource-usage
   - python=3.8
   - pip
   - ipykernel
@@ -23,8 +31,9 @@ dependencies:
   - datashader=0.13
   - pooch=1.6
   - pip:
-    - viresclient==0.9.1
+    - viresclient==0.10.1
     - hapiclient==0.2.1
     - chaosmagpy==0.7.1
+    - -e .
 variables:
   HDF5_USE_FILE_LOCKING: "FALSE"
