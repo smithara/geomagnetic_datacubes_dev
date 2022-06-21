@@ -1,0 +1,8 @@
+format: jb-book
+root: README
+parts:
+- caption: Introduction
+  chapters:
+  - file: notebooks/00_datacube_quicklooks
+  - file: notebooks/01a_datacube_moreviz
+  - file: notebooks/02a_solar-wind-coupling
