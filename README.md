@@ -58,9 +58,11 @@ mamba activate geomagcubes
 jupyter lab
 ```
 
-Browse to `./notebooks/00_datacube_quicklooks.ipynb` to try the demo
+Browse to `./notebooks/00_datacube_quicklooks.ipynb` to download the datacube and view it.
 
-## Building the datacube
+**Important**: That notebook will download and store the prototype datacube at `./data/interim/SwA_20140501-20190501_proc1.nc` (~5GB) and a copy (for working on) at `./notebooks/datacube_test.zarr`. You may need to delete these manually and re-download if you previously used an older version of the code.
+
+## Building the datacube from scratch
 
 Code for building the datacube is within `src/data/`:
 - Some configuration settings are within `src/data/proc_env.py`

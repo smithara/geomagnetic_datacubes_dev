@@ -14,6 +14,7 @@ dependencies:
   - python=3.8
   - pip
   - ipykernel
+  - ipywidgets
   - numpy=1.19
   - scipy=1.7
   - matplotlib=3.4
@@ -29,6 +30,11 @@ dependencies:
   - hvplot=0.7
   - datashader=0.13
   - pooch=1.6
+  - geoviews=1.9
+  # required for saving holoviews objects
+  - selenium=4.1
+  - firefox
+  - geckodriver
   - pip:
     - viresclient==0.10.1
     - hapiclient==0.2.3

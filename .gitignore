@@ -145,3 +145,12 @@ cython_debug/
 !/data/processed/.gitkeep
 !/data/raw/.gitkeep
 *.zarr
+
+# Misc notebook things
+.virtual_documents
+
+# Local Netlify folder
+.netlify
+
+# jupyter book build
+_build
