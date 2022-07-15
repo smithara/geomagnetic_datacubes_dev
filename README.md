@@ -2,6 +2,8 @@
 
 This repository holds resources used for prototyping the geomagnetic datacube concept.
 
+Contact: ashley.smith@ed.ac.uk
+
 ## Setup
 
 Assumes using Linux and conda environments
@@ -21,6 +23,22 @@ bash Mambaforge-$(uname)-$(uname -m).sh
 
 ### Option A - recreate exact environment
 
+*Linux64 platform required*
+
+NB: this lock file is actually a regular environment file. mamba will still do the environment solving, so it is not totally guaranteed.
+
+Using lock file directly with conda:
+1. Create the environment, *geomagcubes*:
+    ```
+    mamba env create --file conda-linux-64.lock.yml --name geomagcubes
+    ```
+2. and then add this project (code under `src` directory) as an editable package:
+    ```
+    mamba activate geomagcubes
+    pip install -e .
+    ```
+
+OR, using conda-lock:
 1. Install [conda-lock](https://conda-incubator.github.io/conda-lock/)  
     You might do this with:  
     ```
@@ -28,29 +46,30 @@ bash Mambaforge-$(uname)-$(uname -m).sh
     pipx install conda-lock[pip_support]
     ```
     (this installs the tool independently of your conda setup, as an application)
-2. Create the `geomagcubes` environment using the `conda-lock.yml`:
+2. Create the `geomagcubes` environment using the conda-lock file:
     ```
-    conda-lock install --name geomagcubes conda-lock.yml
+    conda-lock install --name geomagcubes conda-linux-64.lock.yml
     ```
 3. Install the pip packages not covered in the conda-lock file:
     ```
     mamba activate geomagcubes
-    pip install viresclient==0.10.1 hapiclient==0.2.3 chaosmagpy==0.8
     pip install -e .
     ```
     (the last one installs the code within this repository (under `src`) as an editable package)
 
+(This conda-lock file is generated from `environment.yml` with: `conda-lock --file environment.yml --kind env`)
+
 
 ### Option B - create similar environment (suitable if you need to customise it)
-   
 
 Using the `environment.yml` to create the environment:
 ```
 mamba env create --file environment.yml --name geomagcubes
 ```
-(the file already specifies the pip packages so there is no need to install them separately)
+(the file already specifies the project package so there is no need to install them separately)
 
-### Getting started
+
+## Getting started
 
 Activate the environment and launch JupyterLab from within it
 ```
@@ -61,6 +80,7 @@ jupyter lab
 Browse to `./notebooks/00_datacube_quicklooks.ipynb` to download the datacube and view it.
 
 **Important**: That notebook will download and store the prototype datacube at `./data/interim/SwA_20140501-20190501_proc1.nc` (~5GB) and a copy (for working on) at `./notebooks/datacube_test.zarr`. You may need to delete these manually and re-download if you previously used an older version of the code.
+
 
 ## Building the datacube from scratch
 
