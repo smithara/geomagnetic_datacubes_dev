@@ -3,6 +3,10 @@ root: README
 parts:
 - caption: Introduction
   chapters:
-  - file: notebooks/00_datacube_quicklooks
-  - file: notebooks/01a_datacube_moreviz
+  - file: notebooks/000_prepare_datacube
+  - file: notebooks/01a_datacube_quicklooks
+  - file: notebooks/01b_datacube_moreviz
+- caption: Analysis demonstrations
+  chapters:
   - file: notebooks/02a_solar-wind-coupling
+  - file: notebooks/02b_kmeans-clustering
